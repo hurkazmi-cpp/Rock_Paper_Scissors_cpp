@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevRPS | Rock Paper Scissors</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #0b0e14;
+            --bg-card: rgba(22, 27, 34, 0.8);
+            --bg-hover: rgba(48, 54, 61, 0.4);
+            --border-color: rgba(48, 54, 61, 0.8);
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-blue: #007acc;
+            --accent-glow: rgba(0, 122, 204, 0.4);
+            --accent-hover: #1f8ad2;
+            --win-green: #238636;
+            --loss-red: #da3633;
+            --tie-orange: #d29922;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 1rem;
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(0, 122, 204, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(0, 122, 204, 0.05) 0%, transparent 40%);
+        }
+
+        /* Animated background particles */
+        .bg-glow {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: auto;
+            animation: containerEntry 1s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        @keyframes containerEntry {
+            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .game-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6), 
+                        inset 0 0 20px rgba(255, 255, 255, 0.02);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        @media (max-height: 700px) {
+            .game-card { padding: 1.5rem; }
+            .scoreboard { margin-bottom: 1.5rem; padding: 1rem; }
+            .choices-grid { margin-bottom: 1.5rem; gap: 1rem; }
+            .choice-btn { padding: 1.5rem 0.5rem; }
+            .result-area { min-height: 150px; }
+        }
+
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        h1 {
+            font-size: clamp(1rem, 4vw, 1.4rem);
+            margin-bottom: 0.5rem;
+            color: var(--accent-blue);
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            text-transform: lowercase;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-bottom: 2.5rem;
+            opacity: 0.8;
+            font-family: inherit;
+        }
+
+        .scoreboard {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 3rem;
+            margin-bottom: 3rem;
+            padding: 1.5rem;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+        }
+
+        .score-item {
+            display: flex;
+            flex-direction: column;
+            min-width: 80px;
+        }
+
+        .score-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .score-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-primary);
+        }
+
+        .choices-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .choice-btn {
+            background-color: var(--bg-hover);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2.2rem 1rem;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.25rem;
+            color: var(--text-primary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .choice-btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, var(--accent-glow), transparent 70%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .choice-btn:hover:not(:disabled) {
+            border-color: var(--accent-blue);
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 122, 204, 0.1);
+        }
+
+        .choice-btn:hover::after {
+            opacity: 1;
+        }
+
+        .choice-btn:active:not(:disabled) {
+            transform: translateY(-4px) scale(0.98);
+        }
+
+        .choice-btn:disabled {
+            opacity: 0.2;
+            cursor: not-allowed;
+            transform: translateY(0) !important;
+        }
+
+        .choice-btn svg {
+            width: 50px;
+            height: 50px;
+            fill: var(--text-secondary);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            z-index: 1;
+        }
+
+        .choice-btn:hover svg {
+            fill: var(--accent-blue);
+            transform: scale(1.15) rotate(5deg);
+            filter: drop-shadow(0 0 8px var(--accent-glow));
+        }
+
+        .choice-btn span {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .result-area {
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-top: 1px solid var(--border-color);
+            padding-top: 2rem;
+        }
+
+        .status-msg {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+
+        /* Progress Bar for Thinking */
+        .progress-container {
+            width: 200px;
+            height: 4px;
+            background: var(--bg-hover);
+            border-radius: 2px;
+            margin-bottom: 2rem;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--accent-blue);
+            box-shadow: 0 0 10px var(--accent-glow);
+            transition: width 2.5s linear;
+        }
+
+        .reveal-box {
+            display: flex;
+            gap: 4rem;
+            margin-bottom: 2rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .reveal-box.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .reveal-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .reveal-icon {
+            width: 80px;
+            height: 80px;
+            padding: 20px;
+            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.4s ease;
+        }
+
+        .reveal-icon svg {
+            width: 100%;
+            height: 100%;
+            fill: var(--text-primary);
+        }
+
+        .reset-btn {
+            background-color: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 1rem 2.5rem;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            visibility: hidden;
+            opacity: 0;
+            transform: translateY(10px);
+            box-shadow: 0 8px 20px rgba(0, 122, 204, 0.3);
+        }
+
+        .reset-btn.visible {
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .reset-btn:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px rgba(0, 122, 204, 0.4);
+        }
+
+        .win { color: var(--win-green); text-shadow: 0 0 15px rgba(35, 134, 54, 0.4); }
+        .loss { color: var(--loss-red); text-shadow: 0 0 15px rgba(218, 54, 51, 0.4); }
+        .tie { color: var(--tie-orange); text-shadow: 0 0 15px rgba(210, 153, 34, 0.4); }
+
+        /* Scanning animation */
+        @keyframes scan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        .scanning-line {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 2px;
+            background: var(--accent-blue);
+            box-shadow: 0 0 10px var(--accent-glow);
+            opacity: 0;
+            z-index: 10;
+        }
+
+        .is-thinking .scanning-line {
+            opacity: 0.5;
+            animation: scan 2s infinite linear;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="bg-glow"></div>
+    <div class="container">
+        <div class="game-card" id="main-card">
+            <div class="scanning-line"></div>
+            <h1>
+                <svg style="width:18px;height:18px;fill:currentColor" viewBox="0 0 24 24"><path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/></svg>
+                core_logic::process_rps
+            </h1>
+            <p class="subtitle">v1.2.0 - neural_net_initialized</p>
+
+            <div class="scoreboard">
+                <div class="score-item">
+                    <span class="score-label">YOU</span>
+                    <span class="score-value" id="user-score">0</span>
+                </div>
+                <div style="width:1px; height:40px; background:var(--border-color); opacity:0.5"></div>
+                <div class="score-item">
+                    <span class="score-label">COMPUTER</span>
+                    <span class="score-value" id="comp-score">0</span>
+                </div>
+            </div>
+
+            <div class="choices-grid">
+                <button class="choice-btn" onclick="play(1)" id="btn-1">
+                    <svg viewBox="0 0 512 512">
+                        <path d="M228.813 23L68.75 72.28L39.5 182.095l47.53-21.22l10.44-4.655l2.5 11.155l18.75 39.125l6.405 28.531l-21.75-19.531l-15.72-14.125l-28.218 32.344l140.657 136l9.656-40.69l7.53-31.874l10.407 31.063l54.72 163.592l159.936-26.31l45.75-202.938l-84.563-148.718L228.814 23zm-57.688 49.875l-27.813 39.906l-3.25 73.44l-27.187-88.94l58.25-24.405zm17.844 93.406l113.124-34.843l13.594 48l-120.407 3.53l-6.313-16.687zm172.938-16.312l49.813 87.594l-8.625 38.218l-102.75-17.78l61.562-108.032zM337.813 189l104.937 18.156l-36.812 163.438l-37.47-111.906l-30.656 129.31l-83.313-80.53l83.313-118.47z" />
+                    </svg>
+                    <span>ROCK</span>
+                </button>
+                <button class="choice-btn" onclick="play(2)" id="btn-2">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M14,2H6C4.89,2 4,2.89 4,4V20C4,21.11 4.89,22 6,22H18C19.11,22 20,21.11 20,20V8L14,2M13,3.5L18.5,9H13V3.5M6,20V4H12V10H18V20H6Z" />
+                    </svg>
+                    <span>PAPER</span>
+                </button>
+                <button class="choice-btn" onclick="play(3)" id="btn-3">
+                    <svg viewBox="0 0 512 512">
+                        <path d="m256 192l-39.5-39.5c4.9-12.6 7.5-26.2 7.5-40.5C224 50.1 173.9 0 112 0S0 50.1 0 112s50.1 112 112 112c14.3 0 27.9-2.7 40.5-7.5L192 256l-39.5 39.5c-12.6-4.9-26.2-7.5-40.5-7.5C50.1 288 0 338.1 0 400s50.1 112 112 112s112-50.1 112-112c0-14.3-2.7-27.9-7.5-40.5L499.2 76.8c7.1-7.1 7.1-18.5 0-25.6c-28.3-28.3-74.1-28.3-102.4 0zm22.6 150.6l118.2 118.2c28.3 28.3 74.1 28.3 102.4 0c7.1-7.1 7.1-18.5 0-25.6L342.6 278.6zM64 112a48 48 0 1 1 96 0a48 48 0 1 1-96 0m48 240a48 48 0 1 1 0 96a48 48 0 1 1 0-96" />
+                    </svg>
+                    <span>SCISSORS</span>
+                </button>
+            </div>
+
+            <div class="result-area">
+                <div id="status" class="status-msg">_awaiting_user_input</div>
+                <div id="progress-container" class="progress-container">
+                    <div id="progress-bar" class="progress-bar"></div>
+                </div>
+                <div id="reveal" class="reveal-box">
+                    <div class="reveal-item">
+                        <span class="score-label">Your Choice</span>
+                        <div class="reveal-icon" id="user-reveal"></div>
+                    </div>
+                    <div class="reveal-item">
+                        <span class="score-label">Computer's Choice</span>
+                        <div class="reveal-icon" id="comp-reveal"></div>
+                    </div>
+                </div>
+                <button id="reset-btn" class="reset-btn" onclick="resetGame()">EXECUTE_RETRY</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let userScore = 0;
+        let compScore = 0;
+
+        const icons = {
+            1: `<svg viewBox="0 0 512 512"><path d="M228.813 23L68.75 72.28L39.5 182.095l47.53-21.22l10.44-4.655l2.5 11.155l18.75 39.125l6.405 28.531l-21.75-19.531l-15.72-14.125l-28.218 32.344l140.657 136l9.656-40.69l7.53-31.874l10.407 31.063l54.72 163.592l159.936-26.31l45.75-202.938l-84.563-148.718L228.814 23zm-57.688 49.875l-27.813 39.906l-3.25 73.44l-27.187-88.94l58.25-24.405zm17.844 93.406l113.124-34.843l13.594 48l-120.407 3.53l-6.313-16.687zm172.938-16.312l49.813 87.594l-8.625 38.218l-102.75-17.78l61.562-108.032zM337.813 189l104.937 18.156l-36.812 163.438l-37.47-111.906l-30.656 129.31l-83.313-80.53l83.313-118.47z"/></svg>`,
+            2: `<svg viewBox="0 0 24 24"><path d="M14,2H6C4.89,2 4,2.89 4,4V20C4,21.11 4.89,22 6,22H18C19.11,22 20,21.11 20,20V8L14,2M13,3.5L18.5,9H13V3.5M6,20V4H12V10H18V20H6Z"/></svg>`,
+            3: `<svg viewBox="0 0 512 512"><path d="m256 192l-39.5-39.5c4.9-12.6 7.5-26.2 7.5-40.5C224 50.1 173.9 0 112 0S0 50.1 0 112s50.1 112 112 112c14.3 0 27.9-2.7 40.5-7.5L192 256l-39.5 39.5c-12.6-4.9-26.2-7.5-40.5-7.5C50.1 288 0 338.1 0 400s50.1 112 112 112s112-50.1 112-112c0-14.3-2.7-27.9-7.5-40.5L499.2 76.8c7.1-7.1 7.1-18.5 0-25.6c-28.3-28.3-74.1-28.3-102.4 0zm22.6 150.6l118.2 118.2c28.3 28.3 74.1 28.3 102.4 0c7.1-7.1 7.1-18.5 0-25.6L342.6 278.6zM64 112a48 48 0 1 1 96 0a48 48 0 1 1-96 0m48 240a48 48 0 1 1 0 96a48 48 0 1 1 0-96"/></svg>`
+        };
+
+        const statusEl = document.getElementById('status');
+        const revealEl = document.getElementById('reveal');
+        const userRevealEl = document.getElementById('user-reveal');
+        const compRevealEl = document.getElementById('comp-reveal');
+        const resetBtn = document.getElementById('reset-btn');
+        const userScoreEl = document.getElementById('user-score');
+        const compScoreEl = document.getElementById('comp-score');
+        const mainCard = document.getElementById('main-card');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const choiceBtns = [1, 2, 3].map(i => document.getElementById(`btn-${i}`));
+
+        function play(userChoice) {
+            choiceBtns.forEach(btn => btn.disabled = true);
+            
+            statusEl.textContent = 'analyzing_patterns...';
+            statusEl.className = 'status-msg';
+            mainCard.classList.add('is-thinking');
+            revealEl.classList.remove('show');
+            resetBtn.classList.remove('visible');
+
+            // Show and animate progress bar
+            progressContainer.style.display = 'block';
+            setTimeout(() => progressBar.style.width = '100%', 10);
+
+            // Computer choice logic
+            const computerChoice = Math.floor(Math.random() * 3) + 1;
+
+            // Longer delay for more "thinking" weight (2.5 seconds)
+            setTimeout(() => {
+                revealResult(userChoice, computerChoice);
+            }, 2500);
+        }
+
+        function revealResult(userChoice, computerChoice) {
+            mainCard.classList.remove('is-thinking');
+            progressContainer.style.display = 'none';
+            progressBar.style.width = '0%';
+
+            userRevealEl.innerHTML = icons[userChoice];
+            compRevealEl.innerHTML = icons[computerChoice];
+            revealEl.classList.add('show');
+
+            let resultMsg = '';
+            let resultClass = '';
+
+            if (userChoice === computerChoice) {
+                resultMsg = "DATA_COLLISION [TIE]";
+                resultClass = 'tie';
+            } else if (
+                (userChoice === 1 && computerChoice === 3) || 
+                (userChoice === 2 && computerChoice === 1) || 
+                (userChoice === 3 && computerChoice === 2)
+            ) {
+                resultMsg = "ACCESS_GRANTED [WIN]";
+                resultClass = 'win';
+                userScore++;
+            } else {
+                resultMsg = "SYSTEM_FAILURE [LOSS]";
+                resultClass = 'loss';
+                compScore++;
+            }
+
+            statusEl.textContent = resultMsg;
+            statusEl.className = `status-msg ${resultClass}`;
+            
+            userScoreEl.textContent = userScore;
+            compScoreEl.textContent = compScore;
+            
+            resetBtn.classList.add('visible');
+        }
+
+        function resetGame() {
+            statusEl.textContent = '_awaiting_user_input';
+            statusEl.className = 'status-msg';
+            revealEl.classList.remove('show');
+            resetBtn.classList.remove('visible');
+            choiceBtns.forEach(btn => btn.disabled = false);
+        }
+    </script>
+</body>
+</html>
